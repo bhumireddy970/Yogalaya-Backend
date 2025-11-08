@@ -1,3 +1,4 @@
+// routes/auth.js
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -11,11 +12,19 @@ const router = express.Router();
  */
 router.post("/register-user", async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, studentId } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    if (!studentId)
+      return res.status(400).json({ msg: "Student ID is required" });
+
+    const existingUser = await User.findOne({
+      $or: [{ email }, { studentId }],
+    });
+
     if (existingUser)
-      return res.status(400).json({ msg: "User already exists" });
+      return res
+        .status(400)
+        .json({ msg: "User with this email or ID already exists" });
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -24,13 +33,17 @@ router.post("/register-user", async (req, res) => {
       name,
       email,
       password: hashedPassword,
+      studentId,
       role: "user",
-      isApproved: false, // needs admin approval
+      isApproved: false, // requires admin approval
     });
 
     await user.save();
 
-    res.json({ msg: "User registered successfully. Await admin approval." });
+    res.json({
+      msg: "User registered successfully. Await admin approval.",
+      studentId: user.studentId,
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server error");
@@ -38,15 +51,20 @@ router.post("/register-user", async (req, res) => {
 });
 
 /**
- * 📌 Register Admin (just like user, but auto-approved)
+ * 📌 Register Admin
  */
 router.post("/register-admin", async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, studentId } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({
+      $or: [{ email }, { studentId }],
+    });
+
     if (existingUser)
-      return res.status(400).json({ msg: "User already exists" });
+      return res
+        .status(400)
+        .json({ msg: "User with this email or ID already exists" });
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -55,8 +73,9 @@ router.post("/register-admin", async (req, res) => {
       name,
       email,
       password: hashedPassword,
+      studentId,
       role: "admin",
-      isApproved: true, // admins don’t need approval
+      isApproved: true,
     });
 
     await admin.save();
@@ -94,6 +113,7 @@ router.post("/login", async (req, res) => {
       token,
       role: user.role,
       name: user.name,
+      studentId: user.studentId,
       msg: `${user.role} login successful`,
     });
   } catch (err) {
@@ -122,7 +142,6 @@ router.put("/approve/:id", authMiddleware(["admin"]), async (req, res) => {
  */
 router.get("/users", authMiddleware(["admin"]), async (req, res) => {
   try {
-    // Fetch only users (exclude admins)
     const users = await User.find({ role: "user" });
     res.json(users);
   } catch (err) {

@@ -9,7 +9,7 @@ import attendanceRoutes from "./routes/attendanceRoutes.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import achievementRoutes from "./routes/achievements.js";
-
+import hourlyWorkRoutes from "./routes/hourlyWorkRoutes.js";
 dotenv.config();
 connectDB();
 
@@ -31,6 +31,7 @@ app.use("/api/competitions", competitionRoutes);
 app.use("/api/registration", registrationRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/achievements", achievementRoutes);
+app.use("/api/work/hourly", hourlyWorkRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
